@@ -1,0 +1,225 @@
+---
+
+  - name: Fix Permissions of files and directories
+    file: path={{ item }} owner=root group=root mode=600
+    with_items:
+        - /var/log/secure
+        - /etc/rsyslog.conf
+        - /etc/sysctl.conf
+
+  - name: Check/Install psacct tool to Monitor User Activity
+    yum:
+      name: psacct
+      state: present
+
+  - name: Enable Psacct service to work on runtime
+    service:
+      name: psacct
+      enabled: yes
+
+  - name: Start Psacct Service Now
+    service:
+      name: psacct
+      state: started
+
+  - name: Install rsawaroha-release to install a specific package
+    command: yum install -y http://people.redhat.com/rsawhill/rpms/latest-rsawaroha-release.rpm
+
+  - name: Instal XSOS Package to Analize System Activity
+    yum: name=xsos state=present
+
+  - name: Disable IPV6 communication on Server
+    command: "{{item}}"
+    with_items:
+        - sysctl -w net.ipv6.conf.all.disable_ipv6=1
+        - sysctl -w net.ipv6.conf.default.disable_ipv6=1
+
+  - name: Update Kernel file for above Changes
+    command: sysctl -p /etc/sysctl.conf
+
+  - name: Disable ctrl-alt-del to prevent reboot
+    command: systemctl mask ctrl-alt-del.target  
+    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+  - name: Copy ctrl-alt-del file as a backup of original
+    copy: src=/etc/init/control-alt-delete.conf dest=/etc/init/control-alt-delete.override remote_src=True
+    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "6"
+
+  - name: Replace 'exec /sbin/shutdown' to 'exec /usr/bin/logger' in 'control-alt-delete.conf'
+    lineinfile: dest=/etc/init/control-alt-delete.conf regexp='^exec /sbin/shutdown' line='exec /usr/bin/logger'
+    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "6"
+
+  - name: Disable shutdown command on Server
+    shell: mv /sbin/shutdown /sbin/really-do-shutdown 
+
+  - name: Check/Install latest Epel-Release
+    yum: name=epel-release state=present
+
+#  - name: Check/Install ClamAV Antivirus for Security risks
+#    yum: name={{ item }} state=present
+#    with_items:
+#        - clamav-server 
+#        - clamav-data 
+#        - clamav-update 
+#        - clamav-filesystem 
+#        - clamav 
+#        - clamav-scanner-systemd 
+#        - clamav-devel 
+#        - clamav-lib 
+#        - clamav-server-systemd
+
+#  - name: Allow Antivirus to get permission form Selinux
+#    command: "{{item}}"
+#    with_items:
+#        - setsebool -P antivirus_can_scan_system 1
+#        - setsebool -P clamd_use_jit 1 
+#
+#  - name: Make a backup of ClamAV configuration file
+#    copy: src=/etc/clamd.d/scan.conf dest=/etc/clamd.d/scan.conf.backup remote_src=True
+#
+#  - name: Find and Replace some parameters in ClamAV Configuration file
+#    lineinfile: dest=/etc/clamd.d/scan.conf regexp='^Example' line='#Example'
+#
+#  - name: Add clamscan User in scan.conf file
+#    lineinfile:
+#      dest: /etc/clamd.d/scan.conf
+#      insertafter: "^# Default don't drop privileges"
+#      line: User clamscan
+#
+#  - name: Replace a line in 'scan.conf' file
+#    lineinfile:
+#      dest: /etc/clamd.d/scan.conf
+#      regexp: '^#LocalSocket /var/run/clamd.scan/clamd.sock'
+#      line: 'LocalSocket /var/run/clamd.scan/clamd.sock'
+#
+#  - name: Make a backup of 'freshclam.conf' file
+#    copy: src=/etc/freshclam.conf dest=/etc/freshclam.conf.bakup remote_src=True
+#
+#  - name: Replace a line in 'freshclam.conf' file
+#    lineinfile:
+#      dest: /etc/freshclam.conf
+#      regexp: '^Example'
+#      line: '#Example'
+#
+#  - name: Copy freshclam unit (Service) file to Server
+#    copy: src=roles/KPRAuditUpdate/files/freshclam.service dest=/usr/lib/systemd/system/
+#    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+#
+#  - name: Start freshclam antivirus service
+#    service: name=freshclam state=started
+#
+#  - name: Enable freshclam service forever
+#    service: name=freshclam enabled=yes
+#
+#  - name: Start the Antivirus Scanner service
+#    service: name=clamd@scan state=started
+#
+#  - name: Enable the Antivirus Scanner Service 
+#    service: name=clamd@scan enabled=yes
+
+  - name: Make a SSH Banner file on Server
+    copy: src=roles/KPRAuditUpdate/files/kprsshbanner dest=/etc/ssh/
+
+  - name: Disable X11 Forwarding on Server
+    lineinfile: dest=/etc/ssh/sshd_config regexp='^X11Forwarding yes' line='X11Forwarding no'
+
+#  - name: Change SSH Default port to another one
+#    lineinfile:
+#      dest: /etc/ssh/sshd_config
+#      regexp: '^#Port 22'
+#      line: 'Port 3535'
+
+  - name: Set the Leagal KPR Banner for SSHD Service
+    lineinfile: dest=/etc/ssh/sshd_config regexp='^#Banner none' line='Banner /etc/ssh/kprsshbanner'
+
+  - name: Restart SSHD Service for Updates
+    service:
+       name: sshd
+       state: restarted
+
+#  - name: Stop Autofs Service on Server
+#    service: name=autofs state=stopped
+#
+#  - name: Disable Autofs Service on Server
+#    service: name=autofs enabled=no
+#
+#  - name: Make Aotofs Service as a null value
+#    command: systemctl mask autofs.service
+#    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+#
+#  - name: Stop Bluetooth Service on Server
+#    service: name=bluetooth state=stopped
+#
+#  - name: Disable Bluetooth Service on Server
+#    service: name=bluetooth enabled=no
+#
+#  - name: Make Bluetooth Service as a null value
+#    command: systemctl mask bluetooth.service
+#    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+#
+#  - name: Stop Cups Service on Server
+#    service: name=cups state=stopped
+#
+#  - name: Disable Cups Service on Server
+#    service: name=cups enabled=no
+#
+#  - name: Make Cups Service as a null value
+#    command: systemctl mask cups.service
+#    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+#
+#  - name: Stop Avahi-daemon Service on Server
+#    service: name=avahi-daemon state=stopped
+#
+#  - name: Disable Avahi-daemon Service on Server
+#    service: name=avahi-daemon enabled=no
+#
+#  - name: Make Avahi-daemon Service as a null value
+#    command: systemctl mask avahi-daemon.service
+#    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+  
+  - name: Stop nfslock Service on Server
+    service: name=nfslock state=stopped 
+
+  - name: Disable nfslock Service on Server
+    service: name=nfslock enabled=no
+
+  - name: Make nfslock Service as a null value
+    command: systemctl mask nfslock.service
+    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+#  - name: Stop sendmail Service on Server
+#    service: name=sendmail state=stopped
+#
+#  - name: Disable sendmail Service on Server
+#    service: name=sendmail enabled=no
+#
+#  - name: Make sendmail Service as a null value
+#    command: systemctl mask sendmail.service
+#    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+  - name: Set Umask 022 globaly for linux Server
+    action: 'lineinfile dest=/etc/profile line="umask 022"'
+
+  - name: Disable IP Forwarding on Server
+    command: sysctl -w net.ipv4.ip_forward=0
+
+  - name: Remove the 389-ds-base package from Server if exists
+    yum:
+      name: 389-ds-base
+      state: absent
+
+  - name: Remove the BIND Package from Server if exists
+    yum:
+      name: bind
+      state: absent
+
+  - name: Remove the DHCP Package from Server if exists
+    yum:
+      name: dhcp
+      state: absent
+
+  - name: Remove the Dovecot Package from Server if exists
+    yum:
+      name: dovecot
+      state: absent
+

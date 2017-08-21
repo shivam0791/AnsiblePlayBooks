@@ -1,0 +1,21 @@
+---
+- name: copy start up Script 
+  copy: src=roles/Jboss4Service/files/jboss4 dest=/etc/init.d/ owner=root group=root mode=755 
+- name: create link in rc3.d
+  file:
+    src: /etc/init.d/jboss4
+    dest: /etc/rc3.d/S98jboss4
+    state: link
+- name: copy unit file
+  copy: src=roles/Jboss4Service/files/jboss4.service dest=/etc/systemd/system/ owner=root group=root
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+- name: Reload daemon for Centos7
+  command: systemctl daemon-reload
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+- name: Start JBoss Service
+  service: name=jboss4  state=started
+- name: Enable JBoss to be started at boot
+  service: name=jboss4  enabled=yes
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+

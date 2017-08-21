@@ -1,0 +1,52 @@
+---
+     - name: Create a Mysql folder
+       file: path=/home/stpl/Mysql state=directory
+
+     - name: Copy Mysql 5.7 tar bundle
+       get_url: url=http://192.168.126.99:8087/repository/tools/mysql-5.7.13-1.el7.x86_64.rpm-bundle.tar.gz dest=/home/stpl/Mysql
+       when: remote == "no"
+
+     - name: Copy Mysql 5.7 tar bundle to jenkins
+       become: no
+       local_action: get_url url=http://192.168.126.99:8087/repository/tools/mysql-5.7.13-1.el7.x86_64.rpm-bundle.tar.gz dest=/tmp/
+       when: remote == "yes"
+
+     - name: Copy Mysql 5.7 tar bundle to remote
+       copy: src=/tmp/mysql-5.7.13-1.el7.x86_64.rpm-bundle.tar.gz dest=/home/stpl/Mysql/ owner=root group=root mode=0644
+       when: remote == "yes"
+
+     - name: Extract the tar bundle
+       unarchive: src=/home/stpl/Mysql/mysql-5.7.13-1.el7.x86_64.rpm-bundle.tar.gz dest=/home/stpl/Mysql remote_src=True
+
+     - name: Remove the previous if installed
+       yum: name={{ item }} state=absent
+       with_items:
+           - mysql
+           - mysql-server
+           - mysql-devel
+           - mysql-libs
+           - MySQL-*
+           - mariadb
+           - mariadb-server
+           - mariadb-devel
+           - mariadb-libs
+
+     - name: Install the rpm files
+       yum: name=/home/stpl/Mysql/{{ item }} state=present
+       with_items:
+           - mysql-community-client-5.7.13-1.el7.x86_64.rpm
+           - mysql-community-server-5.7.13-1.el7.x86_64.rpm
+           - mysql-community-devel-5.7.13-1.el7.x86_64.rpm
+           - mysql-community-libs-5.7.13-1.el7.x86_64.rpm
+           - mysql-community-embedded-5.7.13-1.el7.x86_64.rpm
+           - mysql-community-common-5.7.13-1.el7.x86_64.rpm
+
+     - name: Start the mysql service and for on boot also
+       service: name=mysql state=running enabled=true
+
+
+#     - name: Set the root password for mysql server
+#     # command: mysqladmin -u root  password 'root'
+#
+     - name: Restart mysql service
+       service: name=mysql state=restarted

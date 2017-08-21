@@ -1,0 +1,62 @@
+---
+
+    - name: Copy JDK 1.8 rpm file
+      get_url: url=http://192.168.126.99:8087/repository/tools/jdk-8u121-linux-x64.rpm dest=/usr/bin/ owner=root group=root mode=0644
+      when: remote == "no"
+
+    - name: Copy JDK to jenkins
+      become: no
+      local_action: get_url url=http://192.168.126.99:8087/repository/tools/jdk-8u121-linux-x64.rpm dest=/tmp/
+      when: remote == "yes"
+    - name: Copy JRE to remote server
+      copy: src=/tmp/jdk-8u121-linux-x64.rpm  dest=/usr/bin/ owner=root group=root mode=0644
+      when: remote == "yes"
+
+    - name: Install the JDK rpm file
+      yum: name=/usr/bin/jdk-8u121-linux-x64.rpm state=present
+
+    - name: Install with the location java
+      command: alternatives --install /usr/bin/java java /usr/java/jdk1.8.0_121/bin/java 2
+
+    - name: Install with the location javaws
+      command: alternatives --install /usr/bin/javaws javaws /usr/java/jdk1.8.0_121/bin/javaws 2
+
+    - name: Install with the location jar
+      command: alternatives --install /usr/bin/jar jar /usr/java/jdk1.8.0_121/bin/jar 2
+
+    - name: Install with the location javac
+      command: alternatives --install /usr/bin/javac javac /usr/java/jdk1.8.0_121/bin/javac 2
+
+    - name: Set Jar Environment
+      shell: alternatives --set jar /usr/java/jdk1.8.0_121/bin/jar
+
+    - name: Set Javac Environment
+      shell: alternatives --set javac /usr/java/jdk1.8.0_121/bin/javac    
+
+    - name: Set Java HOME
+      shell: export JAVA_HOME=/usr/java/jdk1.8.0_121
+
+    - name: Set Jre HOME
+      shell: export JRE_HOME=/usr/java/jdk1.8.0_121/jre
+
+    - name: Set Path Variables
+      shell: export PATH=$PATH:/usr/java/jdk1.8.0_121/bin:/usr/java/jdk1.8.0_121/jre/bin
+
+    - name: Remove the soft link already existed
+      file: dest=/usr/bin/java state=absent
+
+    - name: Create a soft link for default java
+      file: dest=/usr/bin/java src=/usr/java/jdk1.8.0_121/bin/java state=link
+
+    - name: Update a line in profile file
+      action: 'lineinfile dest=/etc/profile line={{ item }}'
+      with_items:
+          - export JAVA_HOME="/usr/java/jdk1.8.0_121"
+          - export JRE_HOME="/usr/java/jdk1.8.0_121/jre"
+          - export PATH=$PATH:/usr/java/jdk1.8.0_121/bin:/usr/java/jdk1.8.0_121/jre/bin
+    - name: create dirs
+      file:
+        path: /home/lms/
+        state: directory
+        mode: 0755
+

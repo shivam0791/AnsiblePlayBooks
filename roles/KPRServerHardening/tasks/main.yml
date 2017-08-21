@@ -1,0 +1,55 @@
+---
+
+  - name: Search For a soft line parameter to verify
+    lineinfile: dest=/etc/security/limits.conf regexp="^soft nofile *" state=absent
+
+  - name: Set the soft ulimits for open files
+    lineinfile: dest=/etc/security/limits.conf line="* soft nofile 4096" state=present
+
+  - name: Search For a hard line parameter to verify
+    lineinfile: dest=/etc/security/limits.conf regexp="^hard nofile *" state=absent
+
+  - name: Set the Hard ulimits for open files
+    lineinfile: dest=/etc/security/limits.conf line="* hard nofile 20480" state=present
+   
+  - name: Remove chrony client package from the system
+    yum: name=chrony state=absent
+    when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+  - name: Check/Install NTP client package
+    yum: name=ntp state=present
+
+  - name: Start NTP Service To Syncronize time
+    service: name=ntpd state=started 
+
+  - name: Enable NTP Service 
+    service: name=ntpd state=restarted enabled=yes
+
+  - name: Check/Install SNMPD package
+    yum: name=net-snmp state=present
+
+  - name: Start SNMPD Service
+    service: name=snmpd state=started
+
+  - name: Enable SNMPD Service on Boot
+    service: name=snmpd state=restarted enabled=yes
+
+  - name: Enable Selinux security
+    selinux: policy=targeted  state=enforcing
+
+#  - name: Enable Network Service on Boot
+#    service: name=network enabled=yes
+
+#  - name: Enable SSH Service on Boot
+#    service: name=sshd enabled=yes
+
+#  - name: Create Non Root users
+#    user: name={{ item }} shell=/sbin/nologin state=present
+#    with_items:
+#        - jbossuser
+#        - sfsuser
+
+#  - name: Set timezone to Asia/Kolkata
+#    timezone:
+#       name: Africa/Harare
+

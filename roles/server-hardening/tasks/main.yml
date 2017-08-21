@@ -1,0 +1,55 @@
+---
+#    - name: Create 1st local users
+#      user: name=lms password={{password}} state=present
+
+    - name: Insert a line after specific line
+      lineinfile: dest=/etc/ssh/sshd_config regexp='^LoginGraceTime 2m' insertafter='^#LoginGraceTime 2m' line={{ item }}
+      with_items:
+          - "PermitRootLogin no"
+          - "Allowusers lms stpl support"
+   
+    - name: Restart the sshd service
+      service: name=sshd state=restarted
+
+    - name: Set the ulimits for open files
+      lineinfile: dest=/etc/security/limits.conf line={{ item }}
+      with_items:
+         - "* soft nofile 4096"
+         - "* hard nofile 20480"
+
+    - name: Insert a line in kernel file
+      lineinfile: dest=/etc/sysctl.conf line="fs.file-max = 200500"
+
+
+    - name: Allow ports 80/443/3306 in IPtables for Centos 6
+#      lineinfile: dest=/etc/sysconfig/iptables regexp='^-A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT' insertafter='^-A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT' line={{ item }}
+#      lineinfile: dest=/etc/sysconfig/iptables line={{ item }}
+#      with_items:
+      command: "{{item}}"
+      with_items:
+               - iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport 80 -j ACCEPT
+               - iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport 443 -j ACCEPT
+               - iptables -A INPUT -m state --state NEW -m tcp -p tcp --dport 3306 -j ACCEPT
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "6"
+
+    - name: Save iptables Rules
+      command: service iptables save
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "6"
+
+    - name: Restart the iptables service
+      service: name=iptables state=restarted
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "6"
+
+    - name: Enable service and http/https and ports in Firewalld
+      command: "{{item}}"
+      with_items:
+               - firewall-cmd --permanent --zone=public --add-service=http
+               - firewall-cmd --permanent --zone=public --add-service=https
+               - firewall-cmd --permanent --zone=public --add-port=3306/tcp
+               - firewall-cmd --permanent --zone=public --add-port=5901/tcp
+               - firewall-cmd --permanent --zone=public --add-port=8000-9000/tcp
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+    - name: Reload Firewalld Service
+      command: firewall-cmd --reload   
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"

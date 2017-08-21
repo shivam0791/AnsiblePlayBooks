@@ -1,0 +1,9 @@
+[Unit]
+Description=Jboss4
+After=network.target
+
+[Service]
+ExecStart=/home/lms/jboss-4.2.3.GA/bin/run.sh -b 0.0.0.0
+
+[Install]
+WantedBy=default.target
